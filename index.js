@@ -298,6 +298,12 @@ async function run() {
     });
 
 
+    app.get('/payments', async(req, res) => {
+        const result = await paymentCollection.find().toArray();
+        res.send(result);
+    });
+
+
     app.get('/payments/:email', verifyToken, async(req, res) => {
         const query = { email: req.params.email };
         if(req.params.email !== req.decoded.email) {
@@ -321,6 +327,19 @@ async function run() {
         const deleteResult = await cartCollection.deleteMany(query);
 
         res.send({ paymentResult , deleteResult});
+    });
+
+
+    app.patch('/payments/:id', verifyToken, verifyAdmin, async(req, res) => {
+        const id = req.params.id;
+        const filter = { _id: new ObjectId(id) };
+        const updatedDoc = {
+            $set: {
+                status: 'confirm'
+            }
+        }
+        const result = await paymentCollection.updateOne(filter, updatedDoc);
+        res.send(result);
     });
 
 
