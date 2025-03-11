@@ -54,6 +54,8 @@ async function run() {
 
     const paymentCollection = client.db('BistroDB').collection('payments');
 
+    const reservationCollection = client.db('BistroDB').collection('reservation');
+
 
 
 
@@ -62,7 +64,7 @@ async function run() {
     app.post('/jwt', async(req, res) => {
         const user = req.body;
         const token = jwt.sign(user, process.env.ACCESS_TOKEN_SECRET, {
-            expiresIn: '1h'
+            expiresIn: '365d'
         });
         res.send({ token });
     });
@@ -115,6 +117,34 @@ async function run() {
         const result = await userCollection.find().toArray();
         res.send(result);
     });
+
+    app.get('/user/:email', async(req, res) => {
+        const email = req.params.email;
+        const query = { email: email };
+        const user = await userCollection.findOne(query);
+        res.send(user);
+    });
+
+
+
+    app.patch('/user/:email', async(req, res) => {
+        const updateUser = req.body;
+        const email = req.params.email;
+        const filter = { email: email };
+        const updatedDoc = {
+            $set: {
+                name: updateUser.name,
+                email: updateUser.email,
+                phoneNumber: updateUser.phoneNumber,
+                contact: updateUser.contact,
+                image: updateUser.image
+            }
+        }
+
+        const result = await userCollection.updateOne(filter, updatedDoc);
+        res.send(result);
+    });
+
 
 
     app.get('/users/admin/:email', verifyToken, async(req, res) => {
@@ -169,8 +199,28 @@ async function run() {
 
     app.delete('/users/:id', verifyToken, verifyAdmin, async (req, res) => {
         const id = req.params.id;
-        const query = { _id: id }
+        const query = { _id: new ObjectId(id) };
         const result = await userCollection.deleteOne(query);
+        res.send(result);
+    });
+
+
+
+
+
+
+
+    // reservation collection apis
+    app.get('/reservation', async(req, res) => {
+        const email = req.query.email;
+        const query = { email: email };
+        const result = await reservationCollection.findOne(query);
+        res.send(result);
+    });
+
+    app.post('/reservation', async(req, res) => {
+        const booking = req.body;
+        const result = await reservationCollection.insertOne(booking);
         res.send(result);
     });
 
@@ -240,6 +290,12 @@ async function run() {
 
     app.get('/reviews', async(req, res) => {
         const result = await reviewsCollection.find().toArray();
+        res.send(result);
+    });
+
+    app.post('/reviews', async(req, res) => {
+        const review = req.body;
+        const result = await reviewsCollection.insertOne(review);
         res.send(result);
     });
 
@@ -317,6 +373,13 @@ async function run() {
     app.post('/payments', async(req, res) => {
         const payment = req.body;
         const paymentResult = await paymentCollection.insertOne(payment);
+
+
+        // carefully delete reservation
+
+        const email = payment.email;
+        const filter = { email: email };
+        const deleteEmail = await reservationCollection.deleteOne(filter);
         
 
         // carefully delete each item from the cart
@@ -326,7 +389,7 @@ async function run() {
         }};
         const deleteResult = await cartCollection.deleteMany(query);
 
-        res.send({ paymentResult , deleteResult});
+        res.send({ paymentResult , deleteEmail , deleteResult });
     });
 
 
