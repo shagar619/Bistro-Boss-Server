@@ -5,6 +5,15 @@ require('dotenv').config();
 const stripe = require('stripe')(process.env.STRIPE_SECRET_KEY);
 const { MongoClient, ServerApiVersion, ObjectId } = require('mongodb');
 const app = express();
+
+const formData = require('form-data'); // or built-in FormData
+const Mailgun = require('mailgun.js');
+const mailgun = new Mailgun(formData);
+
+const mg = mailgun.client(
+    {username: 'api', 
+        key: process.env.MAILGUN_API_KEY || 'key-yourkeyhere'});
+
 const port = process.env.PORT || 5000;
 
 
@@ -394,6 +403,34 @@ async function run() {
             $in: payment.cartIds.map(id => new ObjectId(id))
         }};
         const deleteResult = await cartCollection.deleteMany(query);
+
+
+
+
+
+
+
+
+        // sent mail by mailgun js
+        mg.messages
+        .create(process.env.MAILGUN_SENDING_DOMAIN, {
+            from: "Excited User <mailgun@YOUR-SANDBOX-DOMAIN>",
+            to: ["shagar767@gmail.com"],
+            subject: "Bistro Boss Order Confirmation!",
+            text: "Testing some Mailgun awesomness!",
+            html: `
+    <div>
+        <h1>Thank You For Buying our product</h1>
+        <h2>Your Transition Id is <strong>${payment.transactionId}</strong> </h2>
+    </div>
+    `,
+        })
+        .then((msg) => console.log(msg))
+        .catch((err) => console.error(err));
+
+
+
+
 
         res.send({ paymentResult , deleteEmail , deleteResult });
     });
